@@ -311,8 +311,21 @@ class EmptyEnv(ManipulationEnv):
             dummy_robot.sim.data.qvel[dummy_robot._ref_joint_vel_indexes] = deepcopy(robot.sim.data.qvel[robot._ref_joint_vel_indexes])
             dummy_robot.sim.data.qpos[dummy_robot._ref_base_joint_pos_indexes] = deepcopy(robot.sim.data.qpos[robot._ref_base_joint_pos_indexes])
             dummy_robot.sim.data.qpos[dummy_robot._ref_torso_joint_pos_indexes] = deepcopy(robot.sim.data.qvel[robot._ref_torso_joint_pos_indexes])
-            dummy_robot.sim.data.qpos[dummy_robot._ref_gripper_joint_pos_indexes["right"]] = deepcopy(robot.sim.data.qpos[robot._ref_gripper_joint_pos_indexes["right"]])
-            dummy_robot.sim.data.qvel[dummy_robot._ref_gripper_joint_vel_indexes["right"]] = deepcopy(robot.sim.data.qvel[robot._ref_gripper_joint_vel_indexes["right"]])
+            dummy_robot.sim.data.time = deepcopy(robot.sim.data.time)
+            dummy_robot.sim.data.act = deepcopy(robot.sim.data.act)
+            dummy_robot.recent_qpos = deepcopy(robot.recent_qpos)
+            dummy_robot.recent_actions = deepcopy(robot.recent_actions)
+            dummy_robot.recent_torques = deepcopy(robot.recent_torques)
+            for arm in robot.arms:
+                if dummy_robot.has_gripper[arm]:
+                    dummy_robot.gripper[arm].current_action = deepcopy(robot.gripper[arm].current_action)
+                    dummy_robot.sim.data.qpos[dummy_robot._ref_gripper_joint_pos_indexes[arm]] = deepcopy(robot.sim.data.qpos[robot._ref_gripper_joint_pos_indexes[arm]])
+                    dummy_robot.sim.data.qvel[dummy_robot._ref_gripper_joint_vel_indexes[arm]] = deepcopy(robot.sim.data.qvel[robot._ref_gripper_joint_vel_indexes[arm]])
+                dummy_robot.recent_ee_forcetorques[arm] = deepcopy(robot.recent_ee_forcetorques[arm])
+                dummy_robot.recent_ee_pose[arm] = deepcopy(robot.recent_ee_pose[arm])
+                dummy_robot.recent_ee_vel[arm] = deepcopy(robot.recent_ee_vel[arm])
+                dummy_robot.recent_ee_acc[arm] = deepcopy(robot.recent_ee_acc[arm])
+                dummy_robot.recent_ee_vel_buffer[arm] = deepcopy(robot.recent_ee_vel_buffer[arm])
         self.sim.forward()
         return 
     
