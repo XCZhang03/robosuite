@@ -2,6 +2,7 @@ from collections import OrderedDict
 from turtle import width
 
 import numpy as np
+from copy import deepcopy
 
 from robosuite.environments.manipulation.manipulation_env import ManipulationEnv
 from robosuite.environments.manipulation.single_arm_env import SingleArmEnv
@@ -294,34 +295,68 @@ class SingleArmEmptyEnv(SingleArmEnv):
         # Run superclass method first
         super().visualize(vis_settings=vis_settings)
 
-    def copy_robot_state(self, env):
-        from copy import deepcopy
-        for i, robot in enumerate(env.robots):
-            robot = env.robots[i]
-            dummy_robot = self.robots[i]
-            dummy_robot.sim.data.qpos[dummy_robot._ref_joint_pos_indexes] = deepcopy(robot.sim.data.qpos[robot._ref_joint_pos_indexes])
-            dummy_robot.sim.data.qvel[dummy_robot._ref_joint_vel_indexes] = deepcopy(robot.sim.data.qvel[robot._ref_joint_vel_indexes])
-            # dummy_robot.sim.data.qpos[dummy_robot._ref_base_joint_pos_indexes] = deepcopy(robot.sim.data.qpos[robot._ref_base_joint_pos_indexes])
-            # dummy_robot.sim.data.qpos[dummy_robot._ref_torso_joint_pos_indexes] = deepcopy(robot.sim.data.qvel[robot._ref_torso_joint_pos_indexes])
-            dummy_robot.sim.data.time = deepcopy(robot.sim.data.time)
-            dummy_robot.sim.data.act = deepcopy(robot.sim.data.act)
-            dummy_robot.recent_qpos = deepcopy(robot.recent_qpos)
-            dummy_robot.recent_actions = deepcopy(robot.recent_actions)
-            dummy_robot.recent_torques = deepcopy(robot.recent_torques)
+    def copy_robot_state(self, env=None, robot_state=None):
+        # if robot states is not None, directly use it
+        if robot_state is None:
+            if env is not None:
+                robot_state = self.get_robot_state(env)
+            else:
+                robot_state = self.get_robot_state()
+        
+        for i, dummy_robot in enumerate(self.robots):
+            prefix = f"robot{i}_"
+            dummy_robot.sim.data.qpos[dummy_robot._ref_joint_pos_indexes] = deepcopy(robot_state[prefix + "joint_pos"])
+            dummy_robot.sim.data.qvel[dummy_robot._ref_joint_vel_indexes] = deepcopy(robot_state[prefix + "joint_vel"])
+            # dummy_robot.sim.data.qpos[dummy_robot._ref_base_joint_pos_indexes] = deepcopy(robot_state[prefix + "base_joint_pos"])
+            # dummy_robot.sim.data.qpos[dummy_robot._ref_torso_joint_pos_indexes] = deepcopy(robot_state[prefix + "torso_joint_pos"])
+            dummy_robot.sim.data.time = deepcopy(robot_state[prefix + "time"])
+            dummy_robot.sim.data.act = deepcopy(robot_state[prefix + "act"])
+            dummy_robot.recent_qpos = deepcopy(robot_state[prefix + "recent_qpos"])
+            dummy_robot.recent_actions = deepcopy(robot_state[prefix + "recent_actions"])
+            dummy_robot.recent_torques = deepcopy(robot_state[prefix + "recent_torques"])
             if dummy_robot.has_gripper:
                 if "SingleArm" in type(dummy_robot).__name__:
-                    dummy_robot.gripper.current_action = deepcopy(robot.gripper.current_action)
-                    dummy_robot.sim.data.qpos[dummy_robot._ref_gripper_joint_pos_indexes] = deepcopy(robot.sim.data.qpos[robot._ref_gripper_joint_pos_indexes])
-                    dummy_robot.sim.data.qvel[dummy_robot._ref_gripper_joint_vel_indexes] = deepcopy(robot.sim.data.qvel[robot._ref_gripper_joint_vel_indexes])
-                    dummy_robot.recent_ee_forcetorques = deepcopy(robot.recent_ee_forcetorques)
-                    dummy_robot.recent_ee_pose = deepcopy(robot.recent_ee_pose)
-                    dummy_robot.recent_ee_vel = deepcopy(robot.recent_ee_vel)
-                    dummy_robot.recent_ee_acc = deepcopy(robot.recent_ee_acc)
-                    dummy_robot.recent_ee_vel_buffer = deepcopy(robot.recent_ee_vel_buffer)
+                    dummy_robot.gripper.current_action = deepcopy(robot_state[prefix + f"gripper_action"])
+                    dummy_robot.sim.data.qpos[dummy_robot._ref_gripper_joint_pos_indexes] = deepcopy(robot_state[prefix + f"gripper_joint_pos"])
+                    dummy_robot.sim.data.qvel[dummy_robot._ref_gripper_joint_vel_indexes] = deepcopy(robot_state[prefix + f"gripper_joint_vel"])
                 else:
                     raise NotImplementedError
+                dummy_robot.recent_ee_forcetorques = deepcopy(robot_state[prefix + f"ee_forcetorques"])
+                dummy_robot.recent_ee_pose = deepcopy(robot_state[prefix + f"ee_pose"])
+                dummy_robot.recent_ee_vel = deepcopy(robot_state[prefix + f"ee_vel"])
+                dummy_robot.recent_ee_acc = deepcopy(robot_state[prefix + f"ee_acc"])
+                dummy_robot.recent_ee_vel_buffer = deepcopy(robot_state[prefix + f"ee_vel_buffer"])
         self.sim.forward()
         return 
+
+    def get_robot_state(self, env=None):
+        if env is None:
+            env = self
+        robot_state = {}
+        for i, robot in enumerate(env.robots):
+            prefix = f"robot{i}_"
+            robot_state[prefix + "joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_joint_pos_indexes])
+            robot_state[prefix + "joint_vel"] = deepcopy(robot.sim.data.qvel[robot._ref_joint_vel_indexes])
+            # robot_state[prefix + "base_joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_base_joint_pos_indexes])
+            # robot_state[prefix + "torso_joint_pos"] = deepcopy(robot.sim.data.qvel[robot._ref_torso_joint_pos_indexes])
+            robot_state[prefix + "time"] = deepcopy(robot.sim.data.time)
+            robot_state[prefix + "act"] = deepcopy(robot.sim.data.act)
+            robot_state[prefix + "recent_qpos"] = deepcopy(robot.recent_qpos)
+            robot_state[prefix + "recent_actions"] = deepcopy(robot.recent_actions)
+            robot_state[prefix + "recent_torques"] = deepcopy(robot.recent_torques)
+            if robot.has_gripper:
+                if "SingleArm" in type(robot).__name__:
+                    robot_state[prefix + f"gripper_action"] = deepcopy(robot.gripper.current_action)
+                    robot_state[prefix + f"gripper_joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_gripper_joint_pos_indexes])
+                    robot_state[prefix + f"gripper_joint_vel"] = deepcopy(robot.sim.data.qvel[robot._ref_gripper_joint_vel_indexes])
+                else:
+                    raise NotImplementedError
+                robot_state[prefix + f"ee_forcetorques"] = deepcopy(robot.recent_ee_forcetorques)
+                robot_state[prefix + f"ee_pose"] = deepcopy(robot.recent_ee_pose)
+                robot_state[prefix + f"ee_vel"] = deepcopy(robot.recent_ee_vel)
+                robot_state[prefix + f"ee_acc"] = deepcopy(robot.recent_ee_acc)
+                robot_state[prefix + f"ee_vel_buffer"] = deepcopy(robot.recent_ee_vel_buffer)
+        return robot_state
     
     def copy_robot_base(self, dummy_robot, target_robot):
         # robot_class = type(dummy_robot)
