@@ -303,31 +303,64 @@ class EmptyEnv(ManipulationEnv):
         # Run superclass method first
         super().visualize(vis_settings=vis_settings)
 
-    def copy_robot_state(self, env):
-        for i, robot in enumerate(env.robots):
-            robot = env.robots[i]
-            dummy_robot = self.robots[i]
-            dummy_robot.sim.data.qpos[dummy_robot._ref_joint_pos_indexes] = deepcopy(robot.sim.data.qpos[robot._ref_joint_pos_indexes])
-            dummy_robot.sim.data.qvel[dummy_robot._ref_joint_vel_indexes] = deepcopy(robot.sim.data.qvel[robot._ref_joint_vel_indexes])
-            dummy_robot.sim.data.qpos[dummy_robot._ref_base_joint_pos_indexes] = deepcopy(robot.sim.data.qpos[robot._ref_base_joint_pos_indexes])
-            dummy_robot.sim.data.qpos[dummy_robot._ref_torso_joint_pos_indexes] = deepcopy(robot.sim.data.qvel[robot._ref_torso_joint_pos_indexes])
-            dummy_robot.sim.data.time = deepcopy(robot.sim.data.time)
-            dummy_robot.sim.data.act = deepcopy(robot.sim.data.act)
-            dummy_robot.recent_qpos = deepcopy(robot.recent_qpos)
-            dummy_robot.recent_actions = deepcopy(robot.recent_actions)
-            dummy_robot.recent_torques = deepcopy(robot.recent_torques)
-            for arm in robot.arms:
+    def copy_robot_state(self, env=None, robot_state=None):
+        # if robot states is not None, directly use it
+        if robot_state is None:
+            if env is not None:
+                robot_state = self.get_robot_state(env)
+            else:
+                robot_state = self.get_robot_state()
+        
+        for i, dummy_robot in enumerate(self.robots):
+            prefix = f"robot{i}_"
+            dummy_robot.sim.data.qpos[dummy_robot._ref_joint_pos_indexes] = deepcopy(robot_state[prefix + "joint_pos"])
+            dummy_robot.sim.data.qvel[dummy_robot._ref_joint_vel_indexes] = deepcopy(robot_state[prefix + "joint_vel"])
+            dummy_robot.sim.data.qpos[dummy_robot._ref_base_joint_pos_indexes] = deepcopy(robot_state[prefix + "base_joint_pos"])
+            dummy_robot.sim.data.qpos[dummy_robot._ref_torso_joint_pos_indexes] = deepcopy(robot_state[prefix + "torso_joint_pos"])
+            dummy_robot.sim.data.time = deepcopy(robot_state[prefix + "time"])
+            dummy_robot.sim.data.act = deepcopy(robot_state[prefix + "act"])
+            dummy_robot.recent_qpos = deepcopy(robot_state[prefix + "recent_qpos"])
+            dummy_robot.recent_actions = deepcopy(robot_state[prefix + "recent_actions"])
+            dummy_robot.recent_torques = deepcopy(robot_state[prefix + "recent_torques"])
+            for arm in dummy_robot.arms:
                 if dummy_robot.has_gripper[arm]:
-                    dummy_robot.gripper[arm].current_action = deepcopy(robot.gripper[arm].current_action)
-                    dummy_robot.sim.data.qpos[dummy_robot._ref_gripper_joint_pos_indexes[arm]] = deepcopy(robot.sim.data.qpos[robot._ref_gripper_joint_pos_indexes[arm]])
-                    dummy_robot.sim.data.qvel[dummy_robot._ref_gripper_joint_vel_indexes[arm]] = deepcopy(robot.sim.data.qvel[robot._ref_gripper_joint_vel_indexes[arm]])
-                dummy_robot.recent_ee_forcetorques[arm] = deepcopy(robot.recent_ee_forcetorques[arm])
-                dummy_robot.recent_ee_pose[arm] = deepcopy(robot.recent_ee_pose[arm])
-                dummy_robot.recent_ee_vel[arm] = deepcopy(robot.recent_ee_vel[arm])
-                dummy_robot.recent_ee_acc[arm] = deepcopy(robot.recent_ee_acc[arm])
-                dummy_robot.recent_ee_vel_buffer[arm] = deepcopy(robot.recent_ee_vel_buffer[arm])
+                    dummy_robot.gripper[arm].current_action = deepcopy(robot_state[prefix + f"gripper_{arm}_action"])
+                    dummy_robot.sim.data.qpos[dummy_robot._ref_gripper_joint_pos_indexes[arm]] = deepcopy(robot_state[prefix + f"gripper_{arm}_joint_pos"])
+                    dummy_robot.sim.data.qvel[dummy_robot._ref_gripper_joint_vel_indexes[arm]] = deepcopy(robot_state[prefix + f"gripper_{arm}_joint_vel"])
+                dummy_robot.recent_ee_forcetorques[arm] = deepcopy(robot_state[prefix + f"ee_{arm}_forcetorques"])
+                dummy_robot.recent_ee_pose[arm] = deepcopy(robot_state[prefix + f"ee_{arm}_pose"])
+                dummy_robot.recent_ee_vel[arm] = deepcopy(robot_state[prefix + f"ee_{arm}_vel"])
+                dummy_robot.recent_ee_acc[arm] = deepcopy(robot_state[prefix + f"ee_{arm}_acc"])
+                dummy_robot.recent_ee_vel_buffer[arm] = deepcopy(robot_state[prefix + f"ee_{arm}_vel_buffer"])
         self.sim.forward()
         return 
+
+    def get_robot_state(self, env=None):
+        if env is None:
+            env = self
+        robot_state = {}
+        for i, robot in enumerate(env.robots):
+            prefix = f"robot{i}_"
+            robot_state[prefix + "joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_joint_pos_indexes])
+            robot_state[prefix + "joint_vel"] = deepcopy(robot.sim.data.qvel[robot._ref_joint_vel_indexes])
+            robot_state[prefix + "base_joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_base_joint_pos_indexes])
+            robot_state[prefix + "torso_joint_pos"] = deepcopy(robot.sim.data.qvel[robot._ref_torso_joint_pos_indexes])
+            robot_state[prefix + "time"] = deepcopy(robot.sim.data.time)
+            robot_state[prefix + "act"] = deepcopy(robot.sim.data.act)
+            robot_state[prefix + "recent_qpos"] = deepcopy(robot.recent_qpos)
+            robot_state[prefix + "recent_actions"] = deepcopy(robot.recent_actions)
+            robot_state[prefix + "recent_torques"] = deepcopy(robot.recent_torques)
+            for arm in robot.arms:
+                if robot.has_gripper[arm]:
+                    robot_state[prefix + f"gripper_{arm}_action"] = deepcopy(robot.gripper[arm].current_action)
+                    robot_state[prefix + f"gripper_{arm}_joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_gripper_joint_pos_indexes[arm]])
+                    robot_state[prefix + f"gripper_{arm}_joint_vel"] = deepcopy(robot.sim.data.qvel[robot._ref_gripper_joint_vel_indexes[arm]])
+                robot_state[prefix + f"ee_{arm}_forcetorques"] = deepcopy(robot.recent_ee_forcetorques[arm])
+                robot_state[prefix + f"ee_{arm}_pose"] = deepcopy(robot.recent_ee_pose[arm])
+                robot_state[prefix + f"ee_{arm}_vel"] = deepcopy(robot.recent_ee_vel[arm])
+                robot_state[prefix + f"ee_{arm}_acc"] = deepcopy(robot.recent_ee_acc[arm])
+                robot_state[prefix + f"ee_{arm}_vel_buffer"] = deepcopy(robot.recent_ee_vel_buffer[arm])
+        return robot_state
     
     def copy_robot_base(self, dummy_robot, target_robot):
         robot_class = type(dummy_robot)
