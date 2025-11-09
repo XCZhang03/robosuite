@@ -384,15 +384,34 @@ class EmptyEnv(ManipulationEnv):
     
     def copy_robot_base(self, dummy_robot, target_robot):
         robot_class = type(dummy_robot)
-        # if "FixedBaseRobot" in robot_class.__name__:
-        pos = deepcopy(target_robot.robot_model._elements['root_body'].get('pos'))
-        if pos is not None:
-            dummy_robot.robot_model._elements['root_body'].set('pos', pos)
-        ori = deepcopy(target_robot.robot_model._elements['root_body'].get('quat'))
-        if ori is not None:
-            dummy_robot.robot_model._elements['root_body'].set('quat', ori)
-        # else:
-            # raise NotImplementedError
+        if "FixedBaseRobot" in robot_class.__name__:
+            pos = deepcopy(target_robot.robot_model._elements['root_body'].get('pos'))
+            if pos is not None:
+                dummy_robot.robot_model._elements['root_body'].set('pos', pos)
+            ori = deepcopy(target_robot.robot_model._elements['root_body'].get('quat'))
+            if ori is not None:
+                dummy_robot.robot_model._elements['root_body'].set('quat', ori)
+        else:
+            raise NotImplementedError
+
+
+
+    def get_camera_transform(self, env=None, camera_name=None, camera_width=None, camera_height=None):
+        if env is None:
+            env = self
+        if camera_name is not None:
+            cam_transform = CU.get_camera_transform_matrix(
+                env.sim, camera_name=camera_name, camera_width=camera_width, camera_height=camera_height
+            )
+            return cam_transform
+        else:
+            cam_transforms = {}
+            for camera_name, camera_height, camera_width in zip(env.camera_names, env.camera_heights, env.camera_widths):
+                cam_transform = CU.get_camera_transform_matrix(
+                    env.sim, camera_name=camera_name, camera_width=camera_width, camera_height=camera_height
+                )
+                cam_transforms[camera_name] = cam_transform
+            return cam_transforms
 
     def get_robot_connections(self):
         sim = self.sim
