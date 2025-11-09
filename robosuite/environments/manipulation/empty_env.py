@@ -380,12 +380,12 @@ class SingleArmEmptyEnv(SingleArmEnv):
             )
             return cam_transform
         else:
-            cam_transforms = []
-            for camera_name, camera_height, camera_width in zip(self.camera_names, self.camera_heights, self.camera_widths):
+            cam_transforms = {}
+            for camera_name, camera_height, camera_width in zip(env.camera_names, env.camera_heights, env.camera_widths):
                 cam_transform = CU.get_camera_transform_matrix(
                     env.sim, camera_name=camera_name, camera_width=camera_width, camera_height=camera_height
                 )
-                cam_transforms.append(cam_transform)
+                cam_transforms[camera_name] = cam_transform
             return cam_transforms
 
     def get_robot_connections(self):
@@ -444,3 +444,27 @@ class SingleArmEmptyEnv(SingleArmEnv):
             camera_rot = sim.data.cam_xmat[cam_id].reshape(3, 3)
             R = T.make_pose(camera_pos, camera_rot)
             return R
+
+    def get_camera_info(self, env=None):
+        if env is None:
+            env = self
+        camera_infos = {}
+        for camera_name, camera_height, camera_width in zip(env.camera_names, env.camera_heights, env.camera_widths):
+            cam_id = env.sim.model.camera_name2id(camera_name)
+            camera_transform = self.get_camera_transform(
+                env=env,
+                camera_name=camera_name,
+                camera_width=camera_width,
+                camera_height=camera_height,
+            )
+            camera_pose = self.get_camera_pose(
+                env=env,
+                camera_name=camera_name,
+            )
+            camera_infos[camera_name] = {
+                'camera_transform': camera_transform,
+                'camera_pose': camera_pose,
+                'camera_width': camera_width,
+                'camera_height': camera_height,
+            }
+        return camera_infos
