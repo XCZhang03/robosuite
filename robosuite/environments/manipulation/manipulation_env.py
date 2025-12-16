@@ -226,7 +226,7 @@ class ManipulationEnv(RobotEnv):
         else:
             o_geoms = [object_geoms] if type(object_geoms) is str else object_geoms
         if isinstance(gripper, GripperModel):
-            g_geoms = [gripper.important_geoms["left_fingerpad"], gripper.important_geoms["right_fingerpad"]]
+            g_geoms = [gripper.important_geoms["left_fingerpad"], gripper.important_geoms["right_fingerpad"], gripper.important_geoms['left_finger'], gripper.important_geoms['right_finger']]
         elif type(gripper) is str:
             g_geoms = [[gripper]]
         else:
@@ -234,6 +234,9 @@ class ManipulationEnv(RobotEnv):
             g_geoms = [[g_group] if type(g_group) is str else g_group for g_group in gripper]
 
         # Search for collisions between each gripper geom group and the object geoms group
+        if (self.check_contact(g_geoms[0], o_geoms) and self.check_contact(g_geoms[1], o_geoms)) or (self.check_contact(g_geoms[2], o_geoms) and self.check_contact(g_geoms[3], o_geoms)):
+            return True
+        return False
         for g_group in g_geoms:
             if not self.check_contact(g_group, o_geoms):
                 return False
