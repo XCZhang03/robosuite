@@ -370,24 +370,6 @@ class SingleArmEmptyEnv(SingleArmEnv):
         # else:
         #     raise NotImplementedError
 
-
-    def get_camera_transform(self, env=None, camera_name=None, camera_width=None, camera_height=None):
-        if env is None:
-            env = self
-        if camera_name is not None:
-            cam_transform = CU.get_camera_transform_matrix(
-                env.sim, camera_name=camera_name, camera_width=camera_width, camera_height=camera_height
-            )
-            return cam_transform
-        else:
-            cam_transforms = {}
-            for camera_name, camera_height, camera_width in zip(env.camera_names, env.camera_heights, env.camera_widths):
-                cam_transform = CU.get_camera_transform_matrix(
-                    env.sim, camera_name=camera_name, camera_width=camera_width, camera_height=camera_height
-                )
-                cam_transforms[camera_name] = cam_transform
-            return cam_transforms
-
     def get_robot_connections(self):
         sim = self.sim
         body_names = sim.model.body_names
@@ -428,43 +410,19 @@ class SingleArmEmptyEnv(SingleArmEnv):
             cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color.tolist(), 1)
         return fig
 
-    def get_camera_pose(self, env=None, camera_name=None):
-        if camera_name is None:
-            camera_poses = {}
-            for camera_name in self.camera_names:
-                camera_poses[camera_name] = self.get_camera_pose(env, camera_name)
-            return camera_poses
-        else:
-            if env is None:
-                sim = self.sim
-            else:
-                sim = env.sim
-            cam_id = sim.model.camera_name2id(camera_name)
-            camera_pos = sim.data.cam_xpos[cam_id]
-            camera_rot = sim.data.cam_xmat[cam_id].reshape(3, 3)
-            R = T.make_pose(camera_pos, camera_rot)
-            return R
-
     def get_camera_info(self, env=None):
         if env is None:
             env = self
         camera_infos = {}
         for camera_name, camera_height, camera_width in zip(env.camera_names, env.camera_heights, env.camera_widths):
             cam_id = env.sim.model.camera_name2id(camera_name)
-            camera_transform = self.get_camera_transform(
-                env=env,
-                camera_name=camera_name,
-                camera_width=camera_width,
-                camera_height=camera_height,
-            )
-            camera_pose = self.get_camera_pose(
-                env=env,
-                camera_name=camera_name,
-            )
             camera_infos[camera_name] = {
-                'camera_transform': camera_transform,
-                'camera_pose': camera_pose,
+                'cam_id': cam_id,
+                'camera_transform': CU.get_camera_transform_matrix(env.sim, camera_name, camera_height, camera_width),
+                'camera_pose': T.make_pose(env.sim.data.cam_xpos[cam_id], env.sim.data.cam_xmat[cam_id].reshape(3, 3)),
                 'camera_width': camera_width,
                 'camera_height': camera_height,
+                'intrinsics': CU.get_camera_intrinsic_matrix(env.sim, camera_name, camera_height, camera_width),
+                'extrinsics': CU.get_camera_extrinsic_matrix(env.sim, camera_name),
             }
         return camera_infos
