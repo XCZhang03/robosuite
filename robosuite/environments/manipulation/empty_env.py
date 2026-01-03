@@ -211,6 +211,9 @@ class SingleArmEmptyEnv(SingleArmEnv):
 
         # load model for table top workspace
         mujoco_arena = self._load_arena()
+        mujoco_arena.set_camera(
+            camera_name="canonical_frontview", pos=[1.0, 0.0, 1.11], quat=[0.48, 0.52, 0.52, 0.48],
+        )
 
         # # Arena always gets set to zero origin
         # mujoco_arena.set_origin([0, 0, 0])
@@ -249,6 +252,7 @@ class SingleArmEmptyEnv(SingleArmEnv):
     def copy_camera_model(self, env):
         ## only modify the present cameras without adding new cameras
         camera_names = list(set(env.sim.model.camera_names).intersection(self.sim.model.camera_names))
+        # print(f"Copying camera model for cameras: {camera_names}")
         for camera_name in camera_names:
             xpos = env.sim.data.get_camera_xpos(camera_name)
             xmat = env.sim.data.get_camera_xmat(camera_name)
@@ -382,6 +386,36 @@ class SingleArmEmptyEnv(SingleArmEnv):
                 connections.append((body, parent_name))
         return connections
     
+    def plot_wrist_pose(self, camera_transform=None, height=None, width=None):
+        import cv2
+        import matplotlib.pyplot as plt
+        fig = np.zeros((height, width, 3), dtype=np.uint8)
+        sim = self.sim
+        connections = self.get_robot_connections()
+        cmap = plt.get_cmap("tab20", len(connections))
+        for i, (body, parent) in enumerate(connections):
+            body_pos, body_depth = CU.project_points_from_world_to_camera(
+                sim.data.get_body_xpos(body), camera_transform, height, width
+            )
+
+            parent_pos, parent_depth = CU.project_points_from_world_to_camera(
+                sim.data.get_body_xpos(parent), camera_transform, height, width
+            )
+            # print(f"Body: {body}, Parent: {parent}, Body Pos: {body_pos}, Parent Pos: {parent_pos}")
+            # Use a color map with len(connection) elements
+            color = (np.array(cmap(i)[:3]) * 255).astype(np.uint8)
+            if body_pos[0] < 0 or body_pos[0] >= height or body_pos[1] < 0 or body_pos[1] >= width or body_depth < 0:
+                continue
+            # print(f"Body: {body}, Body Pos: {body_pos}")
+            fig[int(body_pos[0]), int(body_pos[1])] = color  # body position
+            # Draw a small red dot at the body position instead of a single pixel
+            center = (int(body_pos[1]), int(body_pos[0]))  # (x, y)
+            cv2.circle(fig, center, radius=3, color=(255, 0, 0), thickness=-1)
+            # fig[int(parent_pos[0]), int(parent_pos[1])] = color
+            # # Draw a line between body_pos and parent_pos
+            # cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color=color.tolist(), thickness=1, lineType=cv2.LINE_AA)
+        return fig
+    
     def plot_pose(self, camera_transform=None, height=None, width=None):
         import cv2
         import matplotlib.pyplot as plt
@@ -390,29 +424,30 @@ class SingleArmEmptyEnv(SingleArmEnv):
         connections = self.get_robot_connections()
         cmap = plt.get_cmap("tab20", len(connections))
         for i, (body, parent) in enumerate(connections):
-            body_pos = CU.project_points_from_world_to_camera(
+            body_pos, body_depth = CU.project_points_from_world_to_camera(
                 sim.data.get_body_xpos(body), camera_transform, height, width
             )
-
-            parent_pos = CU.project_points_from_world_to_camera(
+            body_pos = body_pos.clip(0, [height-1, width-1])
+            parent_pos, parent_depth = CU.project_points_from_world_to_camera(
                 sim.data.get_body_xpos(parent), camera_transform, height, width
             )
+            parent_pos = parent_pos.clip(0, [height-1, width-1])
             # print(f"Body: {body}, Parent: {parent}, Body Pos: {body_pos}, Parent Pos: {parent_pos}")
             # Use a color map with len(connection) elements
             color = (np.array(cmap(i)[:3]) * 255).astype(np.uint8)
-            if body_pos[0] < 0 or body_pos[0] >= width or body_pos[1] < 0 or body_pos[1] >= height:
-                continue
-            fig[int(body_pos[0]), int(body_pos[1])] = color  # body position
-            if parent_pos[0] < 0 or parent_pos[0] >= width or parent_pos[1] < 0 or parent_pos[1] >= height:
-                continue
-            fig[int(parent_pos[0]), int(parent_pos[1])] = color
+            cv2.circle(fig, (int(body_pos[1]), int(body_pos[0])), radius=1, color=color.tolist(), thickness=-1)
+            cv2.circle(fig, (int(parent_pos[1]), int(parent_pos[0])), radius=1, color=color.tolist(), thickness=-1)
+            # fig[int(body_pos[0]), int(body_pos[1])] = color  # body position
+            # fig[int(parent_pos[0]), int(parent_pos[1])] = color
             # Draw a line between body_pos and parent_pos
-            cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color.tolist(), 1)
+            cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color=color.tolist(), thickness=1, lineType=cv2.LINE_AA)
         return fig
 
     def get_camera_info(self, env=None):
         if env is None:
             env = self
+        else:
+            print("Getting camera info from provided env")
         camera_infos = {}
         for camera_name, camera_height, camera_width in zip(env.camera_names, env.camera_heights, env.camera_widths):
             cam_id = env.sim.model.camera_name2id(camera_name)
