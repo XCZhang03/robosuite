@@ -406,7 +406,7 @@ class EmptyEnv(ManipulationEnv):
                 if ('robot' in parent_name or 'gripper' in parent_name) and ('eef' not in parent_name and 'eef' not in body):
                     connections.append((body, parent_name))
             except:
-                print(f"Error processing body: {body}, parent: {parent_name}")
+                # print(f"Error processing body: {body}, parent: {parent_name}")
                 continue
         return connections
 
@@ -425,6 +425,7 @@ class EmptyEnv(ManipulationEnv):
             parent_pos, parent_depth = CU.project_points_from_world_to_camera(
                 sim.data.get_body_xpos(parent), camera_transform, height, width
             )
+            parent_pos = parent_pos.clip(0, [height-1, width-1])
             # print(f"Body: {body}, Parent: {parent}, Body Pos: {body_pos}, Parent Pos: {parent_pos}")
             # Use a color map with len(connection) elements
             color = (np.array(cmap(i)[:3]) * 255).astype(np.uint8)
@@ -434,10 +435,10 @@ class EmptyEnv(ManipulationEnv):
             fig[int(body_pos[0]), int(body_pos[1])] = color  # body position
             # Draw a small red dot at the body position instead of a single pixel
             center = (int(body_pos[1]), int(body_pos[0]))  # (x, y)
-            cv2.circle(fig, center, radius=3, color=(255, 0, 0), thickness=-1)
+            cv2.circle(fig, center, radius=1, color=color.tolist(), thickness=-1)
             # fig[int(parent_pos[0]), int(parent_pos[1])] = color
             # # Draw a line between body_pos and parent_pos
-            # cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color=color.tolist(), thickness=1, lineType=cv2.LINE_AA)
+            cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color=color.tolist(), thickness=1, lineType=cv2.LINE_AA)
         return fig
     
     def plot_pose(self, camera_transform=None, height=None, width=None):
