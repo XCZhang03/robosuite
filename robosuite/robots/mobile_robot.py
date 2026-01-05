@@ -86,6 +86,8 @@ class MobileRobot(Robot):
             "qpos": ref_base_joint_pos_indexes,
             "qvel": ref_base_joint_vel_indexes,
         }
+        self._ref_base_joint_pos_indexes = ref_base_joint_pos_indexes
+        self._ref_base_joint_vel_indexes = ref_base_joint_vel_indexes
 
         low = self.sim.model.actuator_ctrlrange[self._ref_actuators_indexes_dict[self.base], 0]
         high = self.sim.model.actuator_ctrlrange[self._ref_actuators_indexes_dict[self.base], 1]
@@ -133,6 +135,8 @@ class MobileRobot(Robot):
             "qpos": ref_torso_joint_pos_indexes,
             "qvel": ref_torso_joint_vel_indexes,
         }
+        self._ref_torso_joint_pos_indexes = ref_torso_joint_pos_indexes
+        self._ref_torso_joint_vel_indexes = ref_torso_joint_vel_indexes
 
         low = self.sim.model.actuator_ctrlrange[self._ref_actuators_indexes_dict[self.torso], 0]
         high = self.sim.model.actuator_ctrlrange[self._ref_actuators_indexes_dict[self.torso], 1]
@@ -179,6 +183,8 @@ class MobileRobot(Robot):
             "qpos": ref_head_joint_pos_indexes,
             "qvel": ref_head_joint_vel_indexes,
         }
+        self._ref_head_joint_pos_indexes = ref_head_joint_pos_indexes
+        self._ref_head_joint_vel_indexes = ref_head_joint_vel_indexes
 
         low = self.sim.model.actuator_ctrlrange[self._ref_actuators_indexes_dict[self.head], 0]
         high = self.sim.model.actuator_ctrlrange[self._ref_actuators_indexes_dict[self.head], 1]

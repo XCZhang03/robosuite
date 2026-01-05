@@ -74,6 +74,8 @@ class LeggedRobot(MobileRobot):
             "qpos": ref_legs_joint_pos_indexes,
             "qvel": ref_legs_joint_vel_indexes,
         }
+        self._ref_legs_joint_pos_indexes = ref_legs_joint_pos_indexes
+        self._ref_legs_joint_vel_indexes = ref_legs_joint_vel_indexes
 
         low = self.sim.model.actuator_ctrlrange[self._ref_actuators_indexes_dict[self.legs], 0]
         high = self.sim.model.actuator_ctrlrange[self._ref_actuators_indexes_dict[self.legs], 1]

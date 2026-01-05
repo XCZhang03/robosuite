@@ -156,6 +156,7 @@ def project_points_from_world_to_camera(points, world_to_camera_transform, camer
 
     # re-scaling from homogenous coordinates to recover pixel values
     # (x, y, z) -> (x / z, y / z)
+    depth = pixels[..., 2:3]
     pixels = pixels / pixels[..., 2:3]
     pixels = pixels[..., :2].round().astype(int)  # shape [..., 2]
 
@@ -163,13 +164,13 @@ def project_points_from_world_to_camera(points, world_to_camera_transform, camer
     # and also clip pixels that are out of range of the camera image
     pixels = np.concatenate(
         (
-            pixels[..., 1:2].clip(0, camera_height - 1),
-            pixels[..., 0:1].clip(0, camera_width - 1),
+            pixels[..., 1:2],
+            pixels[..., 0:1],
         ),
         axis=-1,
     )
 
-    return pixels
+    return pixels, depth
 
 
 def transform_from_pixels_to_world(pixels, depth_map, camera_to_world_transform):

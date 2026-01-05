@@ -315,6 +315,16 @@ class EmptyEnv(ManipulationEnv):
             prefix = f"robot{i}_"
             dummy_robot.sim.data.qpos[dummy_robot._ref_joint_pos_indexes] = deepcopy(robot_state[prefix + "joint_pos"])
             dummy_robot.sim.data.qvel[dummy_robot._ref_joint_vel_indexes] = deepcopy(robot_state[prefix + "joint_vel"])
+            if prefix + "legs_joint_pos" in robot_state:
+                dummy_robot.sim.data.qpos[dummy_robot._ref_legs_joint_pos_indexes] = deepcopy(robot_state[prefix + "legs_joint_pos"])
+                dummy_robot.sim.data.qvel[dummy_robot._ref_legs_joint_vel_indexes] = deepcopy(robot_state[prefix + "legs_joint_vel"])
+            if prefix + "head_joint_pos" in robot_state:
+                dummy_robot.sim.data.qpos[dummy_robot._ref_head_joint_pos_indexes] = deepcopy(robot_state[prefix + "head_joint_pos"])
+                dummy_robot.sim.data.qvel[dummy_robot._ref_head_joint_vel_indexes] = deepcopy(robot_state[prefix + "head_joint_vel"])
+            if prefix + "base_joint_vel" in robot_state:
+                dummy_robot.sim.data.qvel[dummy_robot._ref_base_joint_vel_indexes] = deepcopy(robot_state[prefix + "base_joint_vel"])
+            if prefix + "torso_joint_vel" in robot_state:
+                dummy_robot.sim.data.qvel[dummy_robot._ref_torso_joint_vel_indexes] = deepcopy(robot_state[prefix + "torso_joint_vel"])
             dummy_robot.sim.data.qpos[dummy_robot._ref_base_joint_pos_indexes] = deepcopy(robot_state[prefix + "base_joint_pos"])
             dummy_robot.sim.data.qpos[dummy_robot._ref_torso_joint_pos_indexes] = deepcopy(robot_state[prefix + "torso_joint_pos"])
             dummy_robot.sim.data.time = deepcopy(robot_state[prefix + "time"])
@@ -341,10 +351,20 @@ class EmptyEnv(ManipulationEnv):
         robot_state = {}
         for i, robot in enumerate(env.robots):
             prefix = f"robot{i}_"
+            if hasattr(robot, '_ref_legs_joint_pos_indexes'):
+                robot_state[prefix + "legs_joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_legs_joint_pos_indexes])
+                robot_state[prefix + "legs_joint_vel"] = deepcopy(robot.sim.data.qvel[robot._ref_legs_joint_vel_indexes])
+            if hasattr(robot, '_ref_head_joint_pos_indexes'):
+                robot_state[prefix + "head_joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_head_joint_pos_indexes])
+                robot_state[prefix + "head_joint_vel"] = deepcopy(robot.sim.data.qvel[robot._ref_head_joint_vel_indexes])
+            if hasattr(robot, '_ref_base_joint_vel_indexes'):
+                robot_state[prefix + "base_joint_vel"] = deepcopy(robot.sim.data.qvel[robot._ref_base_joint_vel_indexes])
+            if hasattr(robot, '_ref_torso_joint_vel_indexes'):
+                robot_state[prefix + "torso_joint_vel"] = deepcopy(robot.sim.data.qvel[robot._ref_torso_joint_vel_indexes])
             robot_state[prefix + "joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_joint_pos_indexes])
             robot_state[prefix + "joint_vel"] = deepcopy(robot.sim.data.qvel[robot._ref_joint_vel_indexes])
             robot_state[prefix + "base_joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_base_joint_pos_indexes])
-            robot_state[prefix + "torso_joint_pos"] = deepcopy(robot.sim.data.qvel[robot._ref_torso_joint_pos_indexes])
+            robot_state[prefix + "torso_joint_pos"] = deepcopy(robot.sim.data.qpos[robot._ref_torso_joint_pos_indexes])
             robot_state[prefix + "time"] = deepcopy(robot.sim.data.time)
             robot_state[prefix + "act"] = deepcopy(robot.sim.data.act)
             robot_state[prefix + "recent_qpos"] = deepcopy(robot.recent_qpos)
@@ -364,34 +384,15 @@ class EmptyEnv(ManipulationEnv):
     
     def copy_robot_base(self, dummy_robot, target_robot):
         robot_class = type(dummy_robot)
-        if "FixedBaseRobot" in robot_class.__name__:
-            pos = deepcopy(target_robot.robot_model._elements['root_body'].get('pos'))
-            if pos is not None:
-                dummy_robot.robot_model._elements['root_body'].set('pos', pos)
-            ori = deepcopy(target_robot.robot_model._elements['root_body'].get('quat'))
-            if ori is not None:
-                dummy_robot.robot_model._elements['root_body'].set('quat', ori)
-        else:
-            raise NotImplementedError
-
-
-
-    def get_camera_transform(self, env=None, camera_name=None, camera_width=None, camera_height=None):
-        if env is None:
-            env = self
-        if camera_name is not None:
-            cam_transform = CU.get_camera_transform_matrix(
-                env.sim, camera_name=camera_name, camera_width=camera_width, camera_height=camera_height
-            )
-            return cam_transform
-        else:
-            cam_transforms = []
-            for camera_name, camera_height, camera_width in zip(self.camera_names, self.camera_heights, self.camera_widths):
-                cam_transform = CU.get_camera_transform_matrix(
-                    env.sim, camera_name=camera_name, camera_width=camera_width, camera_height=camera_height
-                )
-                cam_transforms.append(cam_transform)
-            return cam_transforms
+        # if "FixedBaseRobot" in robot_class.__name__:
+        pos = deepcopy(target_robot.robot_model._elements['root_body'].get('pos'))
+        if pos is not None:
+            dummy_robot.robot_model._elements['root_body'].set('pos', pos)
+        ori = deepcopy(target_robot.robot_model._elements['root_body'].get('quat'))
+        if ori is not None:
+            dummy_robot.robot_model._elements['root_body'].set('quat', ori)
+        # else:
+            # raise NotImplementedError
 
     def get_robot_connections(self):
         sim = self.sim
@@ -401,9 +402,43 @@ class EmptyEnv(ManipulationEnv):
             body_id = sim.model.body_name2id(body)
             parent_id = sim.model.body_parentid[body_id] 
             parent_name = sim.model.body_id2name(parent_id)
-            if ('robot' in parent_name or 'gripper' in parent_name) and ('eef' not in parent_name and 'eef' not in body):
-                connections.append((body, parent_name))
+            try:
+                if ('robot' in parent_name or 'gripper' in parent_name) and ('eef' not in parent_name and 'eef' not in body):
+                    connections.append((body, parent_name))
+            except:
+                print(f"Error processing body: {body}, parent: {parent_name}")
+                continue
         return connections
+
+    def plot_wrist_pose(self, camera_transform=None, height=None, width=None):
+        import cv2
+        import matplotlib.pyplot as plt
+        fig = np.zeros((height, width, 3), dtype=np.uint8)
+        sim = self.sim
+        connections = self.get_robot_connections()
+        cmap = plt.get_cmap("tab20", len(connections))
+        for i, (body, parent) in enumerate(connections):
+            body_pos, body_depth = CU.project_points_from_world_to_camera(
+                sim.data.get_body_xpos(body), camera_transform, height, width
+            )
+
+            parent_pos, parent_depth = CU.project_points_from_world_to_camera(
+                sim.data.get_body_xpos(parent), camera_transform, height, width
+            )
+            # print(f"Body: {body}, Parent: {parent}, Body Pos: {body_pos}, Parent Pos: {parent_pos}")
+            # Use a color map with len(connection) elements
+            color = (np.array(cmap(i)[:3]) * 255).astype(np.uint8)
+            if body_pos[0] < 0 or body_pos[0] >= height or body_pos[1] < 0 or body_pos[1] >= width or body_depth < 0:
+                continue
+            # print(f"Body: {body}, Body Pos: {body_pos}")
+            fig[int(body_pos[0]), int(body_pos[1])] = color  # body position
+            # Draw a small red dot at the body position instead of a single pixel
+            center = (int(body_pos[1]), int(body_pos[0]))  # (x, y)
+            cv2.circle(fig, center, radius=3, color=(255, 0, 0), thickness=-1)
+            # fig[int(parent_pos[0]), int(parent_pos[1])] = color
+            # # Draw a line between body_pos and parent_pos
+            # cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color=color.tolist(), thickness=1, lineType=cv2.LINE_AA)
+        return fig
     
     def plot_pose(self, camera_transform=None, height=None, width=None):
         import cv2
@@ -413,39 +448,40 @@ class EmptyEnv(ManipulationEnv):
         connections = self.get_robot_connections()
         cmap = plt.get_cmap("tab20", len(connections))
         for i, (body, parent) in enumerate(connections):
-            body_pos = CU.project_points_from_world_to_camera(
+            body_pos, body_depth = CU.project_points_from_world_to_camera(
                 sim.data.get_body_xpos(body), camera_transform, height, width
             )
-
-            parent_pos = CU.project_points_from_world_to_camera(
+            body_pos = body_pos.clip(0, [height-1, width-1])
+            parent_pos, parent_depth = CU.project_points_from_world_to_camera(
                 sim.data.get_body_xpos(parent), camera_transform, height, width
             )
+            parent_pos = parent_pos.clip(0, [height-1, width-1])
             # print(f"Body: {body}, Parent: {parent}, Body Pos: {body_pos}, Parent Pos: {parent_pos}")
             # Use a color map with len(connection) elements
             color = (np.array(cmap(i)[:3]) * 255).astype(np.uint8)
-            if body_pos[0] < 0 or body_pos[0] >= width or body_pos[1] < 0 or body_pos[1] >= height:
-                continue
-            fig[int(body_pos[0]), int(body_pos[1])] = color  # body position
-            if parent_pos[0] < 0 or parent_pos[0] >= width or parent_pos[1] < 0 or parent_pos[1] >= height:
-                continue
-            fig[int(parent_pos[0]), int(parent_pos[1])] = color
+            cv2.circle(fig, (int(body_pos[1]), int(body_pos[0])), radius=1, color=color.tolist(), thickness=-1)
+            cv2.circle(fig, (int(parent_pos[1]), int(parent_pos[0])), radius=1, color=color.tolist(), thickness=-1)
+            # fig[int(body_pos[0]), int(body_pos[1])] = color  # body position
+            # fig[int(parent_pos[0]), int(parent_pos[1])] = color
             # Draw a line between body_pos and parent_pos
-            cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color.tolist(), 1)
+            cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color=color.tolist(), thickness=1, lineType=cv2.LINE_AA)
         return fig
 
-    def get_camera_pose(self, env=None, camera_name=None):
-        if camera_name is None:
-            camera_poses = {}
-            for camera_name in self.camera_names:
-                camera_poses[camera_name] = self.get_camera_pose(env, camera_name)
-            return camera_poses
+    def get_camera_info(self, env=None):
+        if env is None:
+            env = self
         else:
-            if env is None:
-                sim = self.sim
-            else:
-                sim = env.sim
-            cam_id = sim.model.camera_name2id(camera_name)
-            camera_pos = sim.data.cam_xpos[cam_id]
-            camera_rot = sim.data.cam_xmat[cam_id].reshape(3, 3)
-            R = T.make_pose(camera_pos, camera_rot)
-            return R
+            print("Getting camera info from provided env")
+        camera_infos = {}
+        for camera_name, camera_height, camera_width in zip(env.camera_names, env.camera_heights, env.camera_widths):
+            cam_id = env.sim.model.camera_name2id(camera_name)
+            camera_infos[camera_name] = {
+                'cam_id': cam_id,
+                'camera_transform': CU.get_camera_transform_matrix(env.sim, camera_name, camera_height, camera_width),
+                'camera_pose': T.make_pose(env.sim.data.cam_xpos[cam_id], env.sim.data.cam_xmat[cam_id].reshape(3, 3)),
+                'camera_width': camera_width,
+                'camera_height': camera_height,
+                'intrinsics': CU.get_camera_intrinsic_matrix(env.sim, camera_name, camera_height, camera_width),
+                'extrinsics': CU.get_camera_extrinsic_matrix(env.sim, camera_name),
+            }
+        return camera_infos
