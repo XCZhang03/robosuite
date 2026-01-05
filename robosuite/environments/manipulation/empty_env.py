@@ -378,11 +378,12 @@ class SingleArmEmptyEnv(SingleArmEnv):
         sim = self.sim
         body_names = sim.model.body_names
         connections = []
+        ignore_parts = ['camera', 'eef', 'itb', 'inner_knuckle', 'right_wrist']
         for body in body_names:
             body_id = sim.model.body_name2id(body)
             parent_id = sim.model.body_parentid[body_id] 
             parent_name = sim.model.body_id2name(parent_id)
-            if ('robot' in parent_name or 'gripper' in parent_name) and ('eef' not in parent_name and 'eef' not in body):
+            if ('robot' in parent_name or 'gripper' in parent_name) and all([ignore_part not in (body + parent_name) for ignore_part in ignore_parts]):
                 connections.append((body, parent_name))
         return connections
     
@@ -410,10 +411,10 @@ class SingleArmEmptyEnv(SingleArmEnv):
             fig[int(body_pos[0]), int(body_pos[1])] = color  # body position
             # Draw a small red dot at the body position instead of a single pixel
             center = (int(body_pos[1]), int(body_pos[0]))  # (x, y)
-            cv2.circle(fig, center, radius=3, color=(255, 0, 0), thickness=-1)
+            cv2.circle(fig, center, radius=1, color=color.tolist(), thickness=-1)
             # fig[int(parent_pos[0]), int(parent_pos[1])] = color
             # # Draw a line between body_pos and parent_pos
-            # cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color=color.tolist(), thickness=1, lineType=cv2.LINE_AA)
+            cv2.line(fig, (int(body_pos[1]), int(body_pos[0])), (int(parent_pos[1]), int(parent_pos[0])), color=color.tolist(), thickness=1, lineType=cv2.LINE_AA)
         return fig
     
     def plot_pose(self, camera_transform=None, height=None, width=None):
