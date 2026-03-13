@@ -378,11 +378,12 @@ class SingleArmEmptyEnv(SingleArmEnv):
         sim = self.sim
         body_names = sim.model.body_names
         connections = []
+        ignore_parts = ['camera', 'eef', 'itb', 'inner_knuckle', 'right_wrist']
         for body in body_names:
             body_id = sim.model.body_name2id(body)
             parent_id = sim.model.body_parentid[body_id] 
             parent_name = sim.model.body_id2name(parent_id)
-            if ('robot' in parent_name or 'gripper' in parent_name) and ('eef' not in parent_name and 'eef' not in body):
+            if ('robot' in parent_name or 'gripper' in parent_name) and all([ignore_part not in (body + parent_name) for ignore_part in ignore_parts]):
                 connections.append((body, parent_name))
         return connections
     
