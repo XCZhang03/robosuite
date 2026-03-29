@@ -41,6 +41,8 @@ def create_initialized_egl_device_display(device_id=0):
         if os.environ.get("MUJOCO_EGL_DEVICE_ID", None) is None
         else os.environ.get("MUJOCO_EGL_DEVICE_ID", None)
     )
+    if selected_device and (not selected_device.split(",")[0].isdigit()):
+        selected_device = None
     if selected_device is None:
         candidates = all_devices
         if device_id == -1:
@@ -62,7 +64,7 @@ def create_initialized_egl_device_display(device_id=0):
                 f"The MUJOCO_EGL_DEVICE_ID environment variable must be an integer "
                 f"between 0 and {len(all_devices)-1} (inclusive), got {device_idx}."
             )
-    candidates = all_devices[device_idx : device_idx + 1]
+        candidates = all_devices[device_idx : device_idx + 1]
     for device in candidates:
         display = EGL.eglGetPlatformDisplayEXT(EGL.EGL_PLATFORM_DEVICE_EXT, device, None)
         if display != EGL.EGL_NO_DISPLAY and EGL.eglGetError() == EGL.EGL_SUCCESS:
